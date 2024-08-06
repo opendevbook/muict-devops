@@ -90,7 +90,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="devopt_introduction.html"><strong aria-hidden="true">1.</strong> แนวคิด DevOps</a></li><li class="chapter-item expanded "><a href="cicd.html"><strong aria-hidden="true">2.</strong> แนวคิด CI/CD</a></li><li class="chapter-item expanded "><a href="prepareration/setup_vagrant.html"><strong aria-hidden="true">3.</strong> Setup Vagrant</a></li><li class="chapter-item expanded "><a href="prepareration/vagrant_workshop.html"><strong aria-hidden="true">4.</strong> vagrant workshop: LAMP Stack</a></li><li class="chapter-item expanded "><a href="prepareration/vagrant_docker.html"><strong aria-hidden="true">5.</strong> vagrant workshop: Docker host</a></li><li class="chapter-item expanded "><a href="module1/ansible_introduction.html"><strong aria-hidden="true">6.</strong> แนะนำ Ansible</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="module1/ssh_key.html"><strong aria-hidden="true">6.1.</strong> การสร้าง ssh-key</a></li><li class="chapter-item expanded "><a href="module1/yaml_basic.html"><strong aria-hidden="true">6.2.</strong> การใช้งาน yaml</a></li></ol></li><li class="chapter-item expanded "><a href="module1/workshop_ansble.html"><strong aria-hidden="true">7.</strong> Workshop Ansible</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="index.html">Introduction</a></li><li class="chapter-item expanded affix "><li class="part-title">DevOps</li><li class="chapter-item expanded "><a href="devopt_introduction.html"><strong aria-hidden="true">1.</strong> แนวคิด DevOps</a></li><li class="chapter-item expanded "><a href="cicd.html"><strong aria-hidden="true">2.</strong> แนวคิด CI/CD</a></li><li class="chapter-item expanded affix "><li class="part-title">Setup Environment</li><li class="chapter-item expanded "><a href="prepareration/setup_vagrant.html"><strong aria-hidden="true">3.</strong> Setup Vagrant</a></li><li class="chapter-item expanded "><a href="prepareration/vagrant_workshop.html"><strong aria-hidden="true">4.</strong> vagrant workshop: LAMP Stack</a></li><li class="chapter-item expanded "><a href="prepareration/vagrant_docker.html"><strong aria-hidden="true">5.</strong> vagrant workshop: Docker host</a></li><li class="chapter-item expanded affix "><li class="part-title">Ansible1</li><li class="chapter-item expanded "><a href="module1/ansible_introduction.html"><strong aria-hidden="true">6.</strong> แนะนำ Ansible</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="module1/ssh_key.html"><strong aria-hidden="true">6.1.</strong> การสร้าง ssh-key</a></li><li class="chapter-item expanded "><a href="module1/yaml_basic.html"><strong aria-hidden="true">6.2.</strong> การใช้งาน yaml</a></li></ol></li><li class="chapter-item expanded "><a href="module1/workshop_ansble.html"><strong aria-hidden="true">7.</strong> Workshop Ansible</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
@@ -175,7 +175,28 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="แนวคิด-devops"><a class="header" href="#แนวคิด-devops">แนวคิด DevOps</a></h1>
+                        <h1 id="muict-devops"><a class="header" href="#muict-devops">muict-devops</a></h1>
+<p>Practical DevOps</p>
+<ol>
+<li>Introduction to DevOps and CI/CD, Vagrant</li>
+<li>Ansible (1)</li>
+<li>Ansible (2)</li>
+<li>Introduction to Containerization and Docker (1)</li>
+<li>Docker (2)</li>
+<li>Introduction to container orchestration and Kubernetes (1)</li>
+<li>Kubernetes (2)</li>
+<li>Application deployment</li>
+<li>–Midterm--</li>
+<li>CI/CD Pipeline and GitLab (1)</li>
+<li>GitLab, GitOps (2)</li>
+<li>Jenkins (1)</li>
+<li>Jenkins (2)</li>
+<li>Infrastructure as Code and Terraform</li>
+<li>Python Automation</li>
+<li>DevSecOps</li>
+<li>–Final--</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="แนวคิด-devops"><a class="header" href="#แนวคิด-devops">แนวคิด DevOps</a></h1>
 <h2 id="devops-คืออะไร"><a class="header" href="#devops-คืออะไร">DevOps คืออะไร</a></h2>
 <p>DevOps คือ การนำแนวคิดของการพัฒนาซอฟต์แวร์ (Development) และการดำเนินการ (Operations) มารวมกัน เพื่อสร้างความร่วมมือระหว่างทีมพัฒนาและทีมปฏิบัติการไอที ทำให้กระบวนการผลิตและการปรับใช้ซอฟต์แวร์เป็นไปอย่างอัตโนมัติและสามารถทำซ้ำได้ โดยแก้ไขปัญหาเดิม ๆ และนำระบบอัตโนมัติมาใช้ในทุกขั้นตอนของวงจรชีวิตการพัฒนาซอฟต์แวร์ (SDLC) เน้นที่การทำงานร่วมกันของทีมงาน การใช้เครื่องมืออัตโนมัติ และการส่งมอบซอฟต์แวร์ที่สม่ำเสมอ</p>
 <p>DevOps คือ ชุดแนวทางปฏิบัติที่รวมเอาการพัฒนาซอฟต์แวร์ (Dev) และการดำเนินการไอที (Ops) เข้าด้วยกัน มีอิทธิพลต่อวงจรชีวิตของแอปพลิเคชันตลอดทุกขั้นตอน ตั้งแต่การวางแผน การพัฒนา การส่งมอบ และการดำเนินการ  หลักการสำคัญของ DevOps รวมถึงการยอมรับวัฒนธรรม DevOps การนำแนวทางปฏิบัติ DevOps มาใช้ และการสร้างบริการที่พร้อมให้ใช้งานตลอดเวลา</p>
