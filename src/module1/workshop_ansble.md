@@ -265,27 +265,54 @@ localhost | CHANGED | rc=0 >>
 - **-a "uptime":** ตัวเลือก `-a` ใช้เพื่อระบุพารามิเตอร์ของโมดูล ในที่นี้คือคำสั่ง `uptime` ซึ่งจะแสดงระยะเวลาที่เครื่องทำงานอยู่
 
 
-## กำหนดค่าของ Host สำหรับ Ansible 
-เพิ่ม  ansible host ใน file `/etc/ansible/hosts` และต้องใช้สิทธิของผู้ดูแลระบบ เรียก file นี้ว่า Inventory 
+## ทำการทดสอบ ansible Host สำหรับ Ansible 
+
+![](../assets/images/ansible-diagrame1.png)
+
+เพิ่ม  ansible host ใน file `/etc/ansible/hosts` และต้องใช้สิทธิของผู้ดูแลระบบ  เรียก file นี้ว่า 
+
+Inventory ใช้ ค่า defaults
 ```
-ls /etc/ansible
-sudo vim /etc/ansible/hosts
+[vagrant@centos9s ~]$  ls -l /etc/ansible
+total 8
+-rw-r--r--. 1 root root  614 May 23 19:53 ansible.cfg
+-rw-r--r--. 1 root root 1175 May 23 19:53 hosts
+drwxr-xr-x. 2 root root    6 May 23 19:53 roles
+
+[vagrant@centos9s ~]$  sudo vim /etc/ansible/hosts
 ```
 
-content: /etc/ansible/hosts ต่อท้าย ของ file
+ให้ทำการ เพิ่ม inventory  ต่อท้าย ของ file /etc/ansible/hosts
 ```
 [servers]
 server1 ansible_host=192.168.33.20
 ```
 
-and test ansible add hoc command 
+![](../assets/images/ansible-etc-hosts.png)
+
+```admonish
+คำสั่งพื้นฐาน VIM โดยใช้ key combination
+- **ESC** เข้าสู่ โหมด command
+- **i** เข้าสู่ โหมด insert
+- **shift + g** ย้าย cursor ไป บรรทัดสุดท้าย  (กดปุ่ม shift พร้อมกับ g หรือ Capital G)
+- **:se nu** เปิด หมายเลข บรรทัด
+```
+
+Run ทำสอบการเชื่อมต่อ and test ansible add hoc command 
 ```
 ansible -m ping servers
 ```
-หรือ `[vagrant@centos9s ~]$ ansible servers -i /etc/ansible/hosts -m ping`
-หรือ `[vagrant@centos9s ~]$ ansible server1 -i /etc/ansible/hosts -m ping`
 
-Errors: 
+
+```admonish info
+หากไม่มีการกำหนด `-i /etc/ansible/hosts` ansible ก็ไปอ่านค่า ใน  `-i /etc/ansible/hosts` เพราะเป็นค่า Default
+
+หรือ `[vagrant@centos9s ~]$ ansible servers -i /etc/ansible/hosts -m ping`
+
+หรือ `[vagrant@centos9s ~]$ ansible server1 -i /etc/ansible/hosts -m ping`
+```
+
+ผลที่ได้ ก็จะเกิด  Errors: ด้านล่างนั้ เนื่องจาก ไม่สามารถทำการ Authentication
 ```
 [vagrant@centos9s ~]$ ansible -m ping servers
 The authenticity of host '192.168.33.20 (192.168.33.20)' can't be established.
@@ -300,37 +327,24 @@ server1 | UNREACHABLE! => {
 }
 ```
 
+```admonish error
 Error ที่เห็น เป็น Error ปรกติ เนื่องจาก ไม่สามารถ authentication ไปยังเครื่องเป้าหมายได้
+ดังนั้น การแก้ปัญหาดังกล่าวสามารถดำเนินได้จาก คำแนะนำด้านล่าง ต่อไปนี้
+```
 
-## การกำหนดรูปแบบของการทำ Authentication
+## แก้ Error โดยจะต้องเลือก กำหนดรูปแบบของการทำ Authentication
 Ansible ใช้วิธีการหลายวิธีในการทำการ authentication (การตรวจสอบสิทธิ์) กับโฮสต์ที่มันจัดการ ซึ่งวิธีที่ใช้จะขึ้นอยู่กับประเภทของการเชื่อมต่อที่คุณเลือกใช้ นี่คือวิธีการหลัก ๆ ที่ใช้ในการ authentication:
 
-### วิธีที่ 1 การใช้ SSH Key-Based Authentication
-เป็นวิธีที่นิยมที่สุดในการทำการ authentication ไปยังโฮสต์:
-
-- **การตั้งค่า:** 
-  - สร้างคู่คีย์ SSH (private และ public) และคัดลอกคีย์ public ไปยังโฟลเดอร์ ~/.ssh/authorized_keys บนโฮสต์เป้าหมาย
-การใช้งาน: ในการเชื่อมต่อ Ansible จะใช้คีย์ private ของคุณเพื่อทำการล็อกอินไปยังโฮสต์เป้าหมาย
-การกำหนดค่าใน Ansible: โดยทั่วไป Ansible ใช้คีย์ส่วนตัวที่อยู่ใน ~/.ssh/id_rsa หากคุณใช้คีย์ที่ต่างออกไป คุณสามารถกำหนดค่าในไฟล์ ansible.cfg หรือระบุผ่านตัวเลือก --private-key
-
-
-```
-[vagrant@centos9s ~]$ ansible server1 -i /etc/ansible/hosts -m ping
-server1 | UNREACHABLE! => {
-    "changed": false,
-    "msg": "Failed to connect to the host via ssh: vagrant@192.168.33.20: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,password).",
-    "unreachable": true
-}
-```
-
-### วิธีที่ 2 การใช้ Password-Based Authentication
+### วิธีที่ 1 การใช้ Password-Based Authentication
 
 การใช้รหัสผ่านเป็นอีกทางเลือกหนึ่งในการทำการ authentication แต่ไม่เป็นที่นิยมเท่าการใช้ SSH key เพราะมันอาจจะมีความเสี่ยงด้านความปลอดภัย:
 
-การตั้งค่า: ไม่มีการตั้งค่าเพิ่มเติมที่ต้องทำบนโฮสต์เป้าหมาย แต่คุณต้องระบุรหัสผ่านในคำสั่ง Ansible หรือในไฟล์การกำหนดค่า
-การใช้งาน: คุณสามารถระบุรหัสผ่านในคำสั่งหรือไฟล์การกำหนดค่า
 
 - **กำหนด username/password  ใน Cli** 
+
+การตั้งค่า: ไม่ต้องการแก้ไข file inventory 
+การใช้งาน: ระบุค่า --user และ --ask-pass ใน command line ได้เลยทันที
+
 ```
 [vagrant@centos9s ~]$ ansible -m ping servers --user vagrant --ask-pass
 SSH password:
@@ -345,18 +359,33 @@ server1 | SUCCESS => {
 Ansible จะรอให้กรอกรหัสของ user vagrant คือ vagrant
 
 - **กำหนดไว้ใน inventory**
+
+การตั้งค่า: ระบุ ค่า password เพิ่มเติมใน Inventory โดยตรง
+การใช้งาน: 
+
 ```
 [servers]
 server1 ansible_host=192.168.33.20 ansible_ssh_pass=vagrant
 ```
 
+```
+[vagrant@centos9s ~]$ ansible -m ping servers
+```
+
 - **encode password ไว้ใน File**
+ใช้คำสั่ง ansible-vault เพื่อเก็บข้อมูลของ password ใน secrets.yml แบบ Encryption
+
 ```
 [vagrant@centos9s ~]$ ansible-vault create secrets.yml
 New Vault password:
 Confirm New Vault password:
 ```
-หลังจากนั้น จะมี Temp file ให้เรากรอกข้อมูล
+```admonish
+New Vault password:   ใช้กำหนด password เมื่อมีการใช้งาน files ไม่ใช่ password ของ target
+```
+
+หลังจาก กรอก password คำสั่ง ansible-vault command จะทำการเปิด file ด้วย editor $EDITOR ซึ่งส่วนมากคือ vim ซื่งจะต้องกรอกข้อมูล password ดังนี้
+
 ![](../assets/images/ansible-encrypt.png)
 
 ให้กด `i` สำหรับ mode insert และ
@@ -372,22 +401,109 @@ cat secrets.yml
 ![](../assets/images/ansible-encrypt-ascii.png)
 - content ใน file จะเป็น ascii text
 
-### ทำการ Decrypt ย้อนกลับ
 ```
-[vagrant@centos9s ~]$ ansible-vault decrypt secrets.yml
-Vault password:
-Decryption successful
-[vagrant@centos9s ~]$ cat secrets.yml
-ansible_ssh_pass: vagrant
+[vagrant@centos9s ~]$ ansible -m ping servers --vault-password-file secrets.yml
 ```
+
+
+### วิธีที่ 2 การใช้ SSH Key-Based Authentication
+เป็นวิธีที่นิยมที่สุดในการทำการ authentication ไปยังโฮสต์:
+
+- **การตั้งค่า:** 
+  - สร้างคู่คีย์ SSH (private และ public) และคัดลอกคีย์ public ไปยังโฟลเดอร์ ~/.ssh/authorized_keys บนโฮสต์เป้าหมาย
+การใช้งาน: ในการเชื่อมต่อ Ansible จะใช้คีย์ private ของคุณเพื่อทำการล็อกอินไปยังโฮสต์เป้าหมาย
+การกำหนดค่าใน Ansible: โดยทั่วไป Ansible ใช้คีย์ส่วนตัวที่อยู่ใน ~/.ssh/id_rsa หากคุณใช้คีย์ที่ต่างออกไป คุณสามารถกำหนดค่าในไฟล์ ansible.cfg หรือระบุผ่านตัวเลือก --private-key
+
+
+```
+[vagrant@centos9s ~]$ ssh-keygen -t rsa
+Generating public/private rsa key pair.
+Enter file in which to save the key (/home/vagrant/.ssh/id_rsa):
+Enter passphrase (empty for no passphrase):
+Enter same passphrase again:
+Your identification has been saved in /home/vagrant/.ssh/id_rsa
+Your public key has been saved in /home/vagrant/.ssh/id_rsa.pub
+The key fingerprint is:
+SHA256:HW/BTDsM1d3NAfvmuizrlF8niHtf/b/KJnm8OiZPaIw vagrant@centos9s.localdomain
+The key's randomart image is:
++---[RSA 3072]----+
+|          ..oo.++|
+|           * .o =|
+|          . B.   |
+|         . o o.  |
+|        S . o  o |
+|        o .o..o .|
+|       E +.++ .o+|
+|        ..oB=+ooo|
+|          **OX=.=|
++----[SHA256]-----+
+
+[vagrant@centos9s ~]$ ls -l ~/.ssh/id*
+[vagrant@centos9s ~]$ ls -l  ~/.ssh/
+total 20
+-rw-------. 1 vagrant vagrant 2622 Aug  6 15:17 id_rsa
+-rw-r--r--. 1 vagrant vagrant  582 Aug  6 15:17 id_rsa.pub
+-rw-------. 1 vagrant vagrant  837 Aug  6 15:20 known_hosts
+-rw-r--r--. 1 vagrant vagrant   95 Aug  6 15:20 known_hosts.old
+```
+- **Enter** ผ่านทุกคำถาม คำสั่ง `ssh-keygen` ใช้เพื่อสร้าง public key และ private key
+
+```
+[vagrant@centos9s ~]$ ssh-copy-id vagrant@192.168.33.20
+/usr/bin/ssh-copy-id: INFO: Source of key(s) to be installed: "/home/vagrant/.ssh/id_rsa.pub"
+The authenticity of host '192.168.33.20 (192.168.33.20)' can't be established.
+ED25519 key fingerprint is SHA256:Ytf6GyGqIeJsIGL5Es1OQ50GqP2ZkMJj5sR3mYsACJ8.
+This key is not known by any other names
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+/usr/bin/ssh-copy-id: INFO: attempting to log in with the new key(s), to filter out any that are already installed
+/usr/bin/ssh-copy-id: INFO: 1 key(s) remain to be installed -- if you are prompted now it is to install the new keys
+vagrant@192.168.33.20's password:
+
+Number of key(s) added: 1
+
+Now try logging into the machine, with:   "ssh 'vagrant@192.168.33.20'"
+and check to make sure that only the key(s) you wanted were added.
+
+[vagrant@centos9s ~]$ ls -l  ~/.ssh/
+total 20
+-rw-------. 1 vagrant vagrant  671 Aug  6 15:20 authorized_keys
+-rw-------. 1 vagrant vagrant 2622 Aug  6 15:17 id_rsa
+-rw-r--r--. 1 vagrant vagrant  582 Aug  6 15:17 id_rsa.pub
+-rw-------. 1 vagrant vagrant  837 Aug  6 15:20 known_hosts
+-rw-r--r--. 1 vagrant vagrant   95 Aug  6 15:20 known_hosts.old
+
+```
+- **SUCCESS** เพิ่ม publickey ไว้ใน file  authorized_keys
+
+![](../assets/images/ansible-authorized-keys.png)
+
+### การทดสอบ ssh key
+ให้ทำการ ssh ไปยัง Target ผลที่ได้คือ สามารถ ssh ได้โดยไม่จำเป็นต้องใส่  password
+
+```
+[vagrant@centos9s ~]$ ssh vagrant@192.168.33.20
+Last login: Tue Aug  6 15:01:51 2024 from 10.0.2.2
+[vagrant@centos9s ~]$
+```
+
+```admonish
+ssh-key เป็นวิธีที่ได้รรับความนิยมสูงสุด
+```
+
+
 ## Workshop: สร้าง playbook.yml 
+เป้าหมาย สร้าง Playbook.yml และ hosts ใน vagrant user
+![](../assets/images/ansible-diagrame2.png)
+
 ### สร้าง inventory ของ Project เอง ชื่อว่า host และ สร้าง playbook สำหรับการทำ Auto
 
-สร้าง playbook.yml
+- **ขั้นที่ 1** สร้าง playbook.yml
+```
+[vagrant@centos9s ~]$ vim playbook.yml
+```
+## playbook.yml
 ```
 ---
-# playbook.yml
-
 - name: install nginx and start service
   hosts: web
   become: true
@@ -400,7 +516,12 @@ ansible_ssh_pass: vagrant
      service: name=nginx state=restarted
 ```
 
-สร้าง hosts
+- **ขั้นที่ 2** สร้าง hosts
+
+```
+[vagrant@centos9s ~]$ vim hosts
+```
+content
 ```
 [web]
 192.168.33.20
@@ -419,7 +540,7 @@ total 8
 
 Run
 ```
-[vagrant@centos9s ~]$ ansible web -i host -m ping
+[vagrant@centos9s ~]$ ansible web -i hosts -m ping
 192.168.33.20 | UNREACHABLE! => {
     "changed": false,
     "msg": "Failed to connect to the host via ssh: vagrant@192.168.33.20: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,password).",
@@ -428,7 +549,7 @@ Run
 ```
 
 ```
-[vagrant@centos9s ~]$ ansible all -i host -m ping
+[vagrant@centos9s ~]$ ansible all -i hosts -m ping
 192.168.33.20 | UNREACHABLE! => {
     "changed": false,
     "msg": "Failed to connect to the host via ssh: vagrant@192.168.33.20: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,password).",
@@ -438,7 +559,7 @@ Run
 
 Run
 ```
-ansible-playbook -i host playbook.yml
+[vagrant@centos9s ~]$ ansible-playbook -i hosts playbook.yml
 ```
 
 
@@ -478,9 +599,10 @@ ansible_ssh_pass: vagrant
 หลังจากนั้น ansible-vaule จะencrypt password ไปเก็บไว้ใน secrets.yml
 
 ![](../assets/images/secrets_yml.png)
+
 ansible_config
 ```
-[vagrant@centos9s ~]$ ansible all -i host -m ping
+[vagrant@centos9s ~]$ ansible all -i hosts -m ping
 192.168.33.20 | SUCCESS => {
     "ansible_facts": {
         "discovered_interpreter_python": "/usr/bin/python3"
