@@ -839,16 +839,72 @@ playbook.yml
    - name: start service
      service: name=nginx state=restarted
 
-- name: install nginx and start service
-  hosts: db
-  become: true
+---
+- name: Install MySQL on CentOS 9 Stream
+  hosts: centos
+  become: yes
   tasks:
+    - name: Ensure MySQL repository is present
+      yum_repository:
+        name: mysql
+        description: MySQL Repository
+        baseurl: http://repo.mysql.com/yum/mysql-8.0-community/el/8/$basearch/
+        gpgcheck: yes
+        gpgkey: https://repo.mysql.com/RPM-GPG-KEY-mysql
+        enabled: yes
+      when: ansible_distribution_major_version == "9"
 
-   - name: install db
-     yum: name=mysql state=present
+    - name: Install MySQL Server
+      yum:
+        name: mysql-server
+        state: present
 
-   - name: start service
-     service: name=mysql state=restarted
+    - name: Enable and start MySQL service
+      systemd:
+        name: mysqld
+        enabled: yes
+        state: started
+
+    - name: Secure MySQL Installation
+      shell: |
+        mysql_secure_installation <<EOF
+
+        y
+        new_password
+        new_password
+        y
+        y
+        y
+        y
+        EOF
+      args:
+        executable: /bin/bash
+      when: ansible_distribution_major_version == "9"
+
+    - name: Set root password (Optional if not done in secure installation)
+      mysql_user:
+        login_user: root
+        login_password: ''
+        name: root
+        password: new_password
+        host_all: yes
+        priv: "*.*:ALL,GRANT"
+        state: present
+      when: ansible_distribution_major_version == "9"
+
+    - name: Remove test database and anonymous users
+      mysql_db:
+        name: test
+        state: absent
+      when: ansible_distribution_major_version == "9"
+
+    - name: Remove anonymous users
+      mysql_user:
+        name: ''
+        host_all: yes
+        state: absent
+      when: ansible_distribution_major_version == "9"
+
 ```
 
 ![](../assets/images/ansible_multinote1.png)
