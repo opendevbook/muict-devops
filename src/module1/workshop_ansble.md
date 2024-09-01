@@ -722,7 +722,19 @@ vagrant halt
 vagrant destroy
 ```
 
-แก้ไขfile Vagrantfile
+## 2 Node LAB 
+- controller
+- Web
+- Db
+
+![](../assets/images/2_node_lab.png)
+
+```
+mkdir vagrant-ansible2
+cd vagrant-ansible2
+```
+
+file Vagrantfile ที่ต้องใช้ใน Lab นี้
 ```
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
@@ -788,11 +800,7 @@ end
 
 ```
 
-```
-vagrant status
-vagrant up
-```
-
+ตรวจสอบสถานะของ node
 ```
 PS C:\Users\sysadmin\VagrantDev\Centos9s> vagrant status
 Current machine states:
@@ -806,31 +814,109 @@ above with their current state. For more information about a specific
 VM, run `vagrant status NAME`.
 ```
 
+
+ตัวอย่าง การเข้าถึง vm ให้ใช้ คำสั่ง vagrant ssh ตามด้วยชื่อ เพราะมีหลาย โหนด
 ```
-PS C:\Users\sysadmin\VagrantDev\Centos9s> vagrant up
-Bringing machine 'controller' up with 'virtualbox' provider...
-Bringing machine 'web' up with 'virtualbox' provider...
-Bringing machine 'db' up with 'virtualbox' provider...
-==> controller: Importing base box 'generic/centos9s'...
-Progress: 40%
-...
+> vagrant ssh controller
+> vagrant ssh web
+> vagrant ssh db
 ```
 
-การเข้าถึง vm ให้ใช้ คำสั่ง vagrant ssh ตามด้วยชื่อ
+### เข้าไปใน controller 
+- ติดตั้ง ansible
+- สร้าง ssh-key
+- Copy คีย์ ด้วยคำสั่ง ssh-copy-id จาก controller ไปยัง web และ db
+
 ```
-vagrant ssh controller
-vagrant ssh web
-vagrant ssh db
+[vagrant@controller ~]$ sudo dnf install ansible
 ```
 
-playbook.yml
+```
+C:\Users\sysadmin\Vagrantdev\vagrant-ansible2>vagrant ssh controller
+[vagrant@controller ~]$ ssh-keygen -t rsa -b 2048
+Generating public/private rsa key pair.
+Enter file in which to save the key (/home/vagrant/.ssh/id_rsa):
+Enter passphrase (empty for no passphrase):
+Enter same passphrase again:
+Your identification has been saved in /home/vagrant/.ssh/id_rsa
+Your public key has been saved in /home/vagrant/.ssh/id_rsa.pub
+The key fingerprint is:
+SHA256:rq5xsetCtD1teYPFQ24ghJnvuQLkxvmbw15vnISUZxE vagrant@controller
+The key's randomart image is:
++---[RSA 2048]----+
+|     =. E.       |
+|    + . o .      |
+|     . o *       |
+|  . . + o *      |
+| + o =.*S= .     |
+|  * o *+* o      |
+| . =. +*.o .     |
+|    *=.++        |
+|   .=O=..        |
++----[SHA256]-----+
+```
+
+```
+[vagrant@controller ~]$ ssh-copy-id -i /home/vagrant/.ssh/id_rsa.pub vagrant@192.168.33.20
+/usr/bin/ssh-copy-id: INFO: Source of key(s) to be installed: "/home/vagrant/.ssh/id_rsa.pub"
+The authenticity of host '192.168.33.20 (192.168.33.20)' can't be established.
+ED25519 key fingerprint is SHA256:KEqCQkorjwiGtg5/0QcOn/iEqzjmG7WByO87Me4oDTo.
+This key is not known by any other names
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+/usr/bin/ssh-copy-id: INFO: attempting to log in with the new key(s), to filter out any that are already installed
+/usr/bin/ssh-copy-id: INFO: 1 key(s) remain to be installed -- if you are prompted now it is to install the new keys
+vagrant@192.168.33.20's password:
+
+Number of key(s) added: 1
+
+Now try logging into the machine, with:   "ssh 'vagrant@192.168.33.20'"
+and check to make sure that only the key(s) you wanted were added.
+```
+
+```
+[vagrant@controller ~]$ ssh-copy-id -i /home/vagrant/.ssh/id_rsa.pub vagrant@192.168.33.21
+/usr/bin/ssh-copy-id: INFO: Source of key(s) to be installed: "/home/vagrant/.ssh/id_rsa.pub"
+The authenticity of host '192.168.33.21 (192.168.33.21)' can't be established.
+ED25519 key fingerprint is SHA256:dxcf6SQI+VFAiSQC3CPVrueLukq9PqKRm0Kk6LNI4tI.
+This key is not known by any other names
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+/usr/bin/ssh-copy-id: INFO: attempting to log in with the new key(s), to filter out any that are already installed
+/usr/bin/ssh-copy-id: INFO: 1 key(s) remain to be installed -- if you are prompted now it is to install the new keys
+vagrant@192.168.33.21's password:
+
+Number of key(s) added: 1
+
+Now try logging into the machine, with:   "ssh 'vagrant@192.168.33.21'"
+and check to make sure that only the key(s) you wanted were added.
+
+```
+
+## สร้าง inventory file host และ  playbook.yml
+
+
+```
+[vagrant@controller ~]$ touch hosts playbook.yml
+[vagrant@controller ~]$ ls
+host  playbook.yml
+
+```
+
+- content ของ hosts
+```
+[web]
+server1 ansible_host=192.168.33.20
+
+[db]
+server2 ansible_host=192.168.33.21
+
+```
+
+- ต่อมาสร้าง playbook.yml ในเครื่อง Controller
 ```
 ---
-# playbook.yml
-
 - name: install nginx and start service
-  hosts: web
-  become: true
+  hosts: db
+  become: yes
   tasks:
 
    - name: install nginx
@@ -839,262 +925,87 @@ playbook.yml
    - name: start service
      service: name=nginx state=restarted
 
----
 - name: Install MySQL on CentOS 9 Stream
-  hosts: centos
+  hosts: db
   become: yes
+  vars:
+    mysql_password: 74Z&5/Tw
   tasks:
     - name: Ensure MySQL repository is present
-      yum_repository:
+      ansible.builtin.yum_repository:
         name: mysql
         description: MySQL Repository
         baseurl: http://repo.mysql.com/yum/mysql-8.0-community/el/8/$basearch/
         gpgcheck: yes
-        gpgkey: https://repo.mysql.com/RPM-GPG-KEY-mysql
+        gpgkey: https://repo.mysql.com/RPM-GPG-KEY-mysql-2023
         enabled: yes
       when: ansible_distribution_major_version == "9"
 
+    - name: Ensure Python MySQL library is installed (Python 3)
+      ansible.builtin.package:
+        name: python3-PyMySQL
+        state: present
+      when: ansible_python_version >= '3'
+
     - name: Install MySQL Server
-      yum:
+      ansible.builtin.yum:
         name: mysql-server
         state: present
 
+    - name: Install MySQL Client
+      ansible.builtin.yum:
+        name: mysql
+        state: present
+
     - name: Enable and start MySQL service
-      systemd:
+      ansible.builtin.service:
         name: mysqld
         enabled: yes
         state: started
 
-    - name: Secure MySQL Installation
-      shell: |
-        mysql_secure_installation <<EOF
+    - name: Grep temporary password from MySQL log
+      ansible.builtin.command: awk '/temporary password/{print $NF}' /var/log/mysqld.log
+      register: mysql_temp_password
+      failed_when: mysql_temp_password.stdout == ""
+      changed_when: false
 
-        y
-        new_password
-        new_password
-        y
-        y
-        y
-        y
-        EOF
-      args:
-        executable: /bin/bash
-      when: ansible_distribution_major_version == "9"
+    - name: Display MySQL temporary password
+      ansible.builtin.debug:
+        msg: "{{ mysql_temp_password.stdout }}"
 
-    - name: Set root password (Optional if not done in secure installation)
-      mysql_user:
-        login_user: root
-        login_password: ''
-        name: root
-        password: new_password
-        host_all: yes
-        priv: "*.*:ALL,GRANT"
-        state: present
-      when: ansible_distribution_major_version == "9"
+```
+![](../assets/images/mysql_setup.png)
 
-    - name: Remove test database and anonymous users
-      mysql_db:
-        name: test
-        state: absent
-      when: ansible_distribution_major_version == "9"
+## Login to DB server and set Database
+```
+vagrant ssh db
+```
 
-    - name: Remove anonymous users
-      mysql_user:
-        name: ''
-        host_all: yes
-        state: absent
-      when: ansible_distribution_major_version == "9"
+- นำค่า password ที่ได้ มา login  ```J0meHatmL+N>``` เปลี่ยน ค่าของเราเอง
+```
+mysql -u root -p'J0meHatmL+N>'
+```
 
+- ตัวอย่าง Reset password เช่น '74Z&5/Tw'  (password database จะต้องเป็นไปตาม Policy)
+```
+mysql> ALTER USER 'root'@'localhost' IDENTIFIED  BY '74Z&5/Tw';
+Query OK, 0 rows affected (0.03 sec)
+
+mysql> SELECT user, host, plugin FROM mysql.user WHERE user='root';
++------+-----------+-----------------------+
+| user | host      | plugin                |
++------+-----------+-----------------------+
+| root | localhost | caching_sha2_password |
++------+-----------+-----------------------+
+1 row in set (0.01 sec)
+
+mysql> CREATE USER 'root'@'%' IDENTIFIED WITH mysql_native_password BY '74Z&5/Tw';
+Query OK, 0 rows affected (0.01 sec)
 ```
 
 ![](../assets/images/ansible_multinote1.png)
 
+- ทดสอบ ping
+
 ![](../assets/images/ansible_multinote_ping.png)
 
-
-```
-[vagrant@controller ~]$ ansible-playbook -i hosts playbook.yml -vvv
-```
-
-```
----
-- name: Install and configure Nginx on web servers
-  hosts: web
-  become: true
-  tasks:
-    - name: Install Nginx
-      yum:
-        name: nginx
-        state: present
-
-    - name: Start and enable Nginx service
-      service:
-        name: nginx
-        state: started
-        enabled: true
-
-- name: Install and configure MySQL on db servers
-  hosts: db
-  become: true
-  vars:
-    mysql_root_password: password
-  tasks:
-    - name: Install MySQL
-      yum:
-        name: mysql-server
-        state: present
-
-    - name: Start and enable MySQL service
-      service:
-        name: mysqld
-        state: started
-        enabled: true
-
-    - name: Set MySQL root password
-      mysql_user:
-        name: root
-        password: "{{ mysql_root_password }}"
-        host: localhost
-        state: present
-
-```
-
-```
-Key Changes:
-Naming: Changed play names to better describe their purposes.
-Service Management: Used state: started instead of state: restarted and added enabled: true to ensure the services start on boot.
-MySQL Installation: Changed the package name from mysql to mysql-server (commonly used package name for MySQL).
-MySQL Service Name: Changed the service name to mysqld (typical name for MySQL service).
-MySQL Root Password: Added a task to set the MySQL root password using the mysql_user module.
-Feel free to adj
-```
-
-![](../assets/images/ansible_nginx_mysql.png)
-
-```
-- name: Install and configure MySQL on db servers
-  hosts: db
-  become: true
-  vars:
-    mysql_root_password: password
-    ansible_python_interpreter: /usr/bin/python3
-    sql_file_path: create_tables.sql  # Update this path to your actual SQL file location
-  tasks:
-    - name: Install MySQL
-      yum:
-        name: mysql-server
-        state: present
-
-    - name: Start and enable MySQL service
-      service:
-        name: mysqld
-        state: started
-        enabled: true
-        
-    - name: Install python
-      yum:
-        name: python
-        state: present
-
-    - name: Install python-pip
-      yum:
-        name: python-pip
-        state: present
-
-    - name: Install PyMySQL Python library
-      pip:
-        name: PyMySQL
-        state: present
-
-    - name: Set MySQL root password
-      mysql_user:
-        name: root
-        password: "{{ mysql_root_password }}"
-        host: localhost
-        state: present
-      vars:
-        ansible_python_interpreter: /usr/bin/python3
-
-    - name: Create tables from SQL file
-      mysql_db:
-        name: mydatabase
-        state: import
-        target: "{{ sql_file_path }}"
-        login_user: root
-        login_password: "{{ mysql_root_password }}"
-        login_host: localhost
-```
-
-
-```
-CREATE DATABASE IF NOT EXISTS mydatabase;
-USE mydatabase;
-
-CREATE TABLE IF NOT EXISTS users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(50) NOT NULL,
-    password VARCHAR(255) NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS orders (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT,
-    order_date DATE,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-);
-```
-
-
-```
-- name: Install and configure MySQL on db servers
-  hosts: db
-  become: true
-  vars:
-    mysql_root_password: password
-    ansible_python_interpreter: /usr/bin/python3
-    sql_file_path: create_tables.sql  # Update this path to your actual SQL file location
-  tasks:
-    - name: Install MySQL
-      yum:
-        name: mysql-server
-        state: present
-
-    - name: Start and enable MySQL service
-      service:
-        name: mysqld
-        state: started
-        enabled: true
-        
-    - name: Install python
-      yum:
-        name: python
-        state: present
-
-    - name: Install python-pip
-      yum:
-        name: python-pip
-        state: present
-
-    - name: Install PyMySQL Python library
-      pip:
-        name: PyMySQL
-        state: present
-
-    - name: Set MySQL root password
-      mysql_user:
-        name: root
-        password: "{{ mysql_root_password }}"
-        host: localhost
-        state: present
-      vars:
-        ansible_python_interpreter: /usr/bin/python3
-
-    - name: Create tables from SQL file
-      mysql_db:
-        name: mydatabase
-        state: import
-        target: "{{ sql_file_path }}"
-        login_user: root
-        login_password: "{{ mysql_root_password }}"
-        login_host: localhost
-```
