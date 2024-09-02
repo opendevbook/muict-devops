@@ -629,6 +629,65 @@ output
 ![](../assets/images/playbook1_nginx.png)
 
 
+## Ansible variable lab
+- playbook.yml
+```
+---
+- name: Packages installation and deployment
+  hosts: web
+  become: yes
+  vars:
+    packages:
+      - httpd
+      - firewalld
+      - autofs
+    httpd_service: httpd
+    firewall_services: firewalld
+    autofs_services: autofs
+    firewall_rule: http
+  tasks:
+     - name: Install packages
+       yum:
+         name: "{{ packages }}"
+         state: present
+
+     - name: start and enable httpd service
+       service:
+         name: "{{ httpd_service }}"
+         enabled: true
+         state: started
+
+     - name: start and enable firewall services
+       service:
+         name: "{{ firewall_services }}"
+         enabled: true
+         state: started
+
+     - name: start and enable autofs
+       service:
+         name: "{{ autofs_services }}"
+         enabled: true
+         state: started
+
+     - name: allow apache in firewall
+       firewalld:
+         service: "{{ firewall_rule }}"
+         state: enabled
+         permanent: true
+         immediate: true
+
+     - name: copy a basic website content to test
+       copy:
+         content: "Hello World"
+         dest: /var/www/html/index.html
+
+     - name: update packages variable to the latest
+       yum:
+         name: "{{ packages }}"
+         state: latest
+
+```
+
 ## 2 Node LAB 
 - controller  192.168.33.15
 - Web         192.168.33.20
