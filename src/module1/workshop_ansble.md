@@ -372,19 +372,40 @@ server1 ansible_host=192.168.33.20 ansible_ssh_pass=vagrant
 [vagrant@centos9s ~]$ ansible -m ping servers
 ```
 
-- **encode password ไว้ใน File**
+## Creating New Encrypted Files
+- บริหารจัดการ ข้อมูลที่ต้องการ encrypted ภายใน Ansible
+
+- **สร้าง encode password ไว้ใน File ด้วยคำสั่ง ansible-vault create**
+
 ใช้คำสั่ง ansible-vault เพื่อเก็บข้อมูลของ password ใน secrets.yml แบบ Encryption
 
 ```
 [vagrant@centos9s ~]$ ansible-vault create secrets.yml
-New Vault password:
-Confirm New Vault password:
+
+New Vault password: (12345)
+Confirm New Vault password: (12345)
 ```
+
+- เมื่อเรายืนยัน password เรียบร้อย ansible จะทำการ เปิด Editor เพื่อให้ใส่ข้อมูลที่ต้องการ Encrypt
+
+
+```
+[vagrant@centos9s ~]$ cat secrets.yml
+
+```
+
+- ดู ข้อมูล ด้วยคำสั่ง ```ansible-vault view```  กรอก password
+```
+[vagrant@centos9s lab1]$ ansible-vault view secrets.yml
+Vault password: (12345)
+ansible_ssh_pass: vagrant
+```
+
 ```admonish
 New Vault password:   ใช้กำหนด password เมื่อมีการใช้งาน files ไม่ใช่ password ของ target
 ```
 
-หลังจาก กรอก password คำสั่ง ansible-vault command จะทำการเปิด file ด้วย editor $EDITOR ซึ่งส่วนมากคือ vim ซื่งจะต้องกรอกข้อมูล password ดังนี้
+
 
 ![](../assets/images/ansible-encrypt.png)
 
@@ -401,8 +422,26 @@ cat secrets.yml
 ![](../assets/images/ansible-encrypt-ascii.png)
 - content ใน file จะเป็น ascii text
 
+#### วิธีการใช้
+- ตรวจสอบ /etc/ansible/hosts
+
 ```
-[vagrant@centos9s ~]$ ansible -m ping servers --vault-password-file secrets.yml
+[web]
+server1 ansible_host=192.168.33.10
+```
+
+- สั่งคำสั่งด้านล่าง
+```
+[vagrant@centos9s]$ ansible all  -m ping --extra-vars="@secrets.yml"
+ --ask-vault-pass
+Vault password: (12345)
+server1 | SUCCESS => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python3"
+    },
+    "changed": false,
+    "ping": "pong"
+}
 ```
 
 
@@ -497,11 +536,18 @@ ssh-key เป็นวิธีที่ได้รรับความนิ
 
 ### สร้าง inventory ของ Project เอง ชื่อว่า host และ สร้าง playbook สำหรับการทำ Auto
 
+![](../assets/images/ansible_config.png)
+
+
 - **ขั้นที่ 1** สร้าง playbook.yml
 ```
-[vagrant@centos9s ~]$ vim playbook.yml
+[vagrant@centos9s ~]$ mkdir lab1
+[vagrant@centos9s ~]$ cd lab1
+[vagrant@centos9s lab1]$ vim playbook1.yml
 ```
-## playbook.yml
+## สร้าง content playbook1.yml ด้านล่าง เป็นการ 
+- task 1 download nginx package
+- task 2 start nginx service
 ```
 ---
 - name: install nginx and start service
@@ -516,10 +562,11 @@ ssh-key เป็นวิธีที่ได้รรับความนิ
      service: name=nginx state=restarted
 ```
 
-- **ขั้นที่ 2** สร้าง hosts
+
+- **ขั้นที่ 2** สร้าง  inventory.ini  (ชื่ออะไรก็ได้)
 
 ```
-[vagrant@centos9s ~]$ vim hosts
+[vagrant@centos9s lab1]$ vim inventory.ini
 ```
 content
 ```
@@ -532,162 +579,21 @@ ansible_usr=vagrant
 
 ตรวจสอบ File System ด้วยคำสั่ง `ls -l` ได้เห็น file ที่สร้าง
 ```
-[vagrant@centos9s ~]$ ls -l
-total 8
--rw-r--r--. 1 vagrant vagrant  19 Aug  1 12:19 hosts
--rw-r--r--. 1 vagrant vagrant 224 Aug  1 12:20 playbook.yml
+[vagrant@centos9s lab1]$ ls -l
+total 2
+-rw-r--r--. 1 vagrant vagrant  19 Aug  1 12:19 inventory.ini
+-rw-r--r--. 1 vagrant vagrant 224 Aug  1 12:20 playbook1.yml
 ```
 
-Run
+Run คำสั่ง 
+- option -k หรือ --ask-pass เพื่อใช้ username password 
+- user คือ user ของ shell ที่ใช้งานอยู่ ```echo $USER```
 ```
-[vagrant@centos9s ~]$ ansible web -i hosts -m ping
-192.168.33.20 | UNREACHABLE! => {
-    "changed": false,
-    "msg": "Failed to connect to the host via ssh: vagrant@192.168.33.20: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,password).",
-    "unreachable": true
-}
-```
-
-```
-[vagrant@centos9s ~]$ ansible all -i hosts -m ping
-192.168.33.20 | UNREACHABLE! => {
-    "changed": false,
-    "msg": "Failed to connect to the host via ssh: vagrant@192.168.33.20: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,password).",
-    "unreachable": true
-}
-```
-
-Run
-```
-[vagrant@centos9s ~]$ ansible-playbook -i hosts playbook.yml
-```
-
-
-โดย default แล้ว ansible เลือกใช้วิธี ssh-key authentication แต่ ซื่งจะต้องทำการ Copy ssh-key จากเครื่อง controller ไปยัง เครื่อง servers ที่ระบุใน inventory
-
-วิธีแรก ลองทดสอบ แบบ password authentication ส่วน user จะเป็นชื่อ user บน shell ของเครื่อง controller (user vagrant)
-```
-[web]
-192.168.33.20  ansible_ssh_pass=vagrant
-```
-
-ลองทดสอบอีกครั้ง จะพบว่า error เปลี่ยนเป็น Success
-```
-[vagrant@centos9s ~]$ ansible all -i host -m ping
-192.168.33.20 | SUCCESS => {
-    "ansible_facts": {
-        "discovered_interpreter_python": "/usr/bin/python3"
-    },
-    "changed": false,
-    "ping": "pong"
-}
-```
-
-แต่สำหรับวิธีการใช้ password แบบที่กำหนดค่า password โดยตรงลงไปใน ไฟล์ invetory ทำให้เกิดความเสียงสูง ดังนั้น จะใช้ คำสั่ง ```ansible-value``` เพื่อทำการ Encrypt password  โดยใช้คำสั่ง
-
-```
-[vagrant@centos9s ~]$ ansible-vault create secrets.yml
-New Vault password:
-Confirm New Vault password:
-```
-
-เพิ่มตัวแปร ไปยัง Temporary File (โดยใช้ VI editor) 
-```
-ansible_ssh_pass: vagrant
-```
-
-หลังจากนั้น ansible-vaule จะencrypt password ไปเก็บไว้ใน secrets.yml
-
-![](../assets/images/secrets_yml.png)
-
-ansible_config
-```
-[vagrant@centos9s ~]$ ansible all -i hosts -m ping
-192.168.33.20 | SUCCESS => {
-    "ansible_facts": {
-        "discovered_interpreter_python": "/usr/bin/python3"
-    },
-    "changed": false,
-    "ping": "pong"
-}
-```
-
-กลับไปที่วิธี ของ ssh key ต้องสร้าง ssh key ก่อน 
-```
-ssh-keygen -t rsa
-```
-
-```
-[vagrant@centos9s ~]$ ssh-keygen -t rsa
-Generating public/private rsa key pair.
-Enter file in which to save the key (/home/vagrant/.ssh/id_rsa):
-Enter passphrase (empty for no passphrase):
-Enter same passphrase again:
-Your identification has been saved in /home/vagrant/.ssh/id_rsa
-Your public key has been saved in /home/vagrant/.ssh/id_rsa.pub
-The key fingerprint is:
-SHA256:toTj+jA2qXwjwVVa3Pt7BS1wpOwHpcZZvZcjVdTRnN8 vagrant@centos9s.localdomain
-The key's randomart image is:
-+---[RSA 3072]----+
-|     . .   .+. +O|
-|      + .o.*. .o+|
-|     +   .Oo ...+|
-|    o  ..o .o.ooE|
-| . .  o S.. .o...|
-|  o  o + ...  .  |
-|   .* . .  . .   |
-| ..oo=    . .    |
-|  oo.o.    .     |
-+----[SHA256]-----+
-```
-
-copy public key ด้วยคำสั่ง ssh-copy-id ไปยัง server
-```
-[vagrant@centos9s ~]$ ssh-copy-id vagrant@192.168.33.20
-/usr/bin/ssh-copy-id: INFO: Source of key(s) to be installed: "/home/vagrant/.ssh/id_rsa.pub"
-/usr/bin/ssh-copy-id: INFO: attempting to log in with the new key(s), to filter out any that are already installed
-/usr/bin/ssh-copy-id: INFO: 1 key(s) remain to be installed -- if you are prompted now it is to install the new keys
-vagrant@192.168.33.20's password:
-
-Number of key(s) added: 1
-
-Now try logging into the machine, with:   "ssh 'vagrant@192.168.33.20'"
-and check to make sure that only the key(s) you wanted were added.
-```
-
-อีกขั้นตอน
-```
-[web]
-192.168.33.20 ansible_ssh_private_key_file=~/.ssh/id_rsa
-```
-
-คราวนี้ลองทดสอบคำสั่ง อีกครั้ง
-```
-[vagrant@centos9s ~]$ ansible all -i host -m ping
-192.168.33.20 | SUCCESS => {
-    "ansible_facts": {
-        "discovered_interpreter_python": "/usr/bin/python3"
-    },
-    "changed": false,
-    "ping": "pong"
-}
-```
-
-หรือ ให้ระบุ ใน Ansible config file  (`ansible.cfg`)
-
-```
-[vagrant@centos9s ~]$ sudo vim /etc/ansible/ansible.cfg
-```
-
-```
-[defaults]
-private_key_file =~/.ssh/id_rsa
-```
-
-Result
-```
-[vagrant@centos9s ~]$ ansible all -i host -m ping
-192.168.33.20 | SUCCESS => {
+[vagrant@centos9s lab1]$ echo $USER
+vagrant
+[vagrant@centos9s lab1]$ ansible web -i inventory.ini -m ping -k
+SSH password:
+server1 | SUCCESS => {
     "ansible_facts": {
         "discovered_interpreter_python": "/usr/bin/python3"
     },
@@ -697,35 +603,36 @@ Result
 ```
 
 
-![](../assets/images/ansible_config.png)
+**ทดสอบด้วยคำสั่ง ansible-playbook**
+
+- Run เพื่อทดสอบคำสั่ง ``` ansible-playbook -i inventory.ini playbook1.yml  -k```
+```
+[vagrant@centos9s lab1]$ ansible-playbook -i inventory.ini playbook1.yml  -k
+SSH password:
+
+PLAY [install nginx and start service] *********************************************************************************************
+
+TASK [Gathering Facts] *************************************************************************************************************
+ok: [server1]
+
+TASK [install nginx] ***************************************************************************************************************
+ok: [server1]
+
+TASK [start service] ***************************************************************************************************************
+changed: [server1]
+
+PLAY RECAP *************************************************************************************************************************
+server1                    : ok=3    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
 
 ```
-[vagrant@centos9s ~]$ ansible-playbook -i host playbook.yml
-```
+output
+![](../assets/images/playbook1_nginx.png)
 
-![](../assets/images/ansible_nginx.png)
-
-```
-[vagrant@centos9s ~]$ ss -tulpn
-Netid      State       Recv-Q      Send-Q            Local Address:Port             Peer Address:Port      Process
-udp        UNCONN      0           0                     127.0.0.1:323                   0.0.0.0:*
-udp        UNCONN      0           0                         [::1]:323                      [::]:*
-tcp        LISTEN      0           511                     0.0.0.0:80                    0.0.0.0:*
-tcp        LISTEN      0           128                     0.0.0.0:22                    0.0.0.0:*
-tcp        LISTEN      0           511                        [::]:80                       [::]:*
-tcp        LISTEN      0           128                        [::]:22                       [::]:*
-[vagrant@centos9s ~]$
-```
-
-```
-vagrant halt
-vagrant destroy
-```
 
 ## 2 Node LAB 
-- controller
-- Web
-- Db
+- controller  192.168.33.15
+- Web         192.168.33.20
+- Db          192.168.33.21
 
 ![](../assets/images/2_node_lab.png)
 
@@ -757,7 +664,7 @@ Vagrant.configure("2") do |config|
 
   config.vm.define "controller" do |control|
     control.vm.hostname = "controller"
-    control.vm.network "private_network", ip: "192.168.33.10"
+    control.vm.network "private_network", ip: "192.168.33.15"
     control.vm.provider "virtualbox" do |vb|
       vb.memory = "1024"
       vb.cpus = 1
@@ -800,9 +707,9 @@ end
 
 ```
 
-ตรวจสอบสถานะของ node
+- ตรวจสอบสถานะของ node
 ```
-PS C:\Users\sysadmin\VagrantDev\Centos9s> vagrant status
+C:\Users\sysadmin\Vagrantdev\vagrant-ansible2> vagrant status
 Current machine states:
 
 controller                not created (virtualbox)
@@ -813,27 +720,39 @@ This environment represents multiple VMs. The VMs are all listed
 above with their current state. For more information about a specific
 VM, run `vagrant status NAME`.
 ```
+- start vm ด้วย ```vagrant up```
+```
+C:\Users\sysadmin\Vagrantdev\vagrant-ansible2> vagrant up
+```
 
 
-ตัวอย่าง การเข้าถึง vm ให้ใช้ คำสั่ง vagrant ssh ตามด้วยชื่อ เพราะมีหลาย โหนด
+
+- การเข้าถึง vm ให้ใช้ คำสั่ง ```vagrant ssh``` ตามด้วยชื่อ เพราะมีหลาย โหนด
 ```
 > vagrant ssh controller
 > vagrant ssh web
 > vagrant ssh db
 ```
 
-### เข้าไปใน controller 
-- ติดตั้ง ansible
-- สร้าง ssh-key
+### Step เตรียมพร้อม เครื่อง VM ตามหน้าที่
+- เข้าไปใน Controller ติดตั้ง ansible
+- เพิ่ม ข้อมูงใน ```/etc/hosts``` ในเครื่อง Controller
+  ```
+  192.168.33.15 controller controller
+  192.168.33.22 web  web
+  192.168.33.21 db  db
+  ```
+- ทำการ สร้าง ssh-key ในทุกเครื่อง (output ใน  ~/.ssh/)
 - Copy คีย์ ด้วยคำสั่ง ssh-copy-id จาก controller ไปยัง web และ db
 
-```
-[vagrant@controller ~]$ sudo dnf install ansible
-```
 
 ```
 C:\Users\sysadmin\Vagrantdev\vagrant-ansible2>vagrant ssh controller
+
+[vagrant@controller ~]$ sudo dnf install ansible
+
 [vagrant@controller ~]$ ssh-keygen -t rsa -b 2048
+
 Generating public/private rsa key pair.
 Enter file in which to save the key (/home/vagrant/.ssh/id_rsa):
 Enter passphrase (empty for no passphrase):
@@ -856,8 +775,10 @@ The key's randomart image is:
 +----[SHA256]-----+
 ```
 
+- copy key ไปยัง web 192.168.33.20
 ```
 [vagrant@controller ~]$ ssh-copy-id -i /home/vagrant/.ssh/id_rsa.pub vagrant@192.168.33.20
+
 /usr/bin/ssh-copy-id: INFO: Source of key(s) to be installed: "/home/vagrant/.ssh/id_rsa.pub"
 The authenticity of host '192.168.33.20 (192.168.33.20)' can't be established.
 ED25519 key fingerprint is SHA256:KEqCQkorjwiGtg5/0QcOn/iEqzjmG7WByO87Me4oDTo.
@@ -873,8 +794,10 @@ Now try logging into the machine, with:   "ssh 'vagrant@192.168.33.20'"
 and check to make sure that only the key(s) you wanted were added.
 ```
 
+- copy key ไปยัง db 192.168.33.21
 ```
 [vagrant@controller ~]$ ssh-copy-id -i /home/vagrant/.ssh/id_rsa.pub vagrant@192.168.33.21
+
 /usr/bin/ssh-copy-id: INFO: Source of key(s) to be installed: "/home/vagrant/.ssh/id_rsa.pub"
 The authenticity of host '192.168.33.21 (192.168.33.21)' can't be established.
 ED25519 key fingerprint is SHA256:dxcf6SQI+VFAiSQC3CPVrueLukq9PqKRm0Kk6LNI4tI.
@@ -895,13 +818,13 @@ and check to make sure that only the key(s) you wanted were added.
 
 
 ```
-[vagrant@controller ~]$ touch hosts playbook.yml
+[vagrant@controller ~]$ touch inventory.ini playbook.yml
 [vagrant@controller ~]$ ls
-host  playbook.yml
+inventory.ini  playbook.yml
 
 ```
 
-- content ของ hosts
+- content ของ inventory.ini
 ```
 [web]
 server1 ansible_host=192.168.33.20
@@ -1002,10 +925,4 @@ mysql> SELECT user, host, plugin FROM mysql.user WHERE user='root';
 mysql> CREATE USER 'root'@'%' IDENTIFIED WITH mysql_native_password BY '74Z&5/Tw';
 Query OK, 0 rows affected (0.01 sec)
 ```
-
-![](../assets/images/ansible_multinote1.png)
-
-- ทดสอบ ping
-
-![](../assets/images/ansible_multinote_ping.png)
 
